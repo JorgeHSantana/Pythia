@@ -597,7 +597,7 @@ Built-in routes:
 | Route | Method | Authentication | Response |
 |---|---|---|---|
 | `/health` | GET | No | `{"status": "healthy", "timestamp": "<ISO 8601>"}` |
-| `/mcp/tools` | GET | No | Tool catalog: list of `{name, description, parameters, returns}`, plus `server` and `version`. Lists only the MCP surface — endpoints with `expose = "rest"` are omitted (11.8). |
+| `/mcp/tools` | GET | No | Tool catalog: list of `{name, description, parameters, returns}`, plus `server` and `version`. A definition without `parameters` is listed with `{"properties": {}}`. Lists only the MCP surface — endpoints with `expose = "rest"` are omitted (11.8). |
 | `/mcp/tools/<name>` | POST | Yes (if `AUTH_API_KEY` set) | Executes the corresponding tool. |
 | User endpoints | per `method` | Yes (if `AUTH_API_KEY` set) | Envelope `{tool, result, success}`. |
 
@@ -626,7 +626,11 @@ Since 0.5.0, `AUTH_API_KEY` entries accept `name:key:scope` (scope = `+`-joined
 set, e.g. `read+write`) alongside the plain `key` form (full scope). The
 matched principal `{"name", "scopes"}` is published as `request.state.auth` and
 via the `restmcp.auth.current_auth` contextvar — visible in sync callbacks
-(run_callback copies the context into the worker thread). An `Endpoint` may
+(run_callback copies the context into the worker thread). This holds on BOTH
+transports: over REST and over an MCP `tools/call` served by `asgi_app()`
+(FastMCP runs the tool inside the request task, where `AuthMiddleware` set the
+contextvar) — pinned by `tests/test_auth_mcp_identity.py` and shown in
+`examples/telemetry/endpoints/whoami.py`. An `Endpoint` may
 declare `required_scope = "write"`: enforced before the callback on the REST
 path, returning 403 with `error_type: ForbiddenError`. Original section:
 

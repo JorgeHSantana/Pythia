@@ -94,7 +94,11 @@ class RestApp:
                     {
                         "name": h.mcp_definition["name"],
                         "description": h.mcp_definition["description"],
-                        "parameters": h.mcp_definition["parameters"],
+                        # .get: a hand-written definition may omit
+                        # parameters (validation allows it) — one such
+                        # endpoint must not 500 the whole catalog.
+                        "parameters": h.mcp_definition.get("parameters")
+                        or {"properties": {}},
                         "returns": h.mcp_definition.get("returns", {}),
                     }
                     # the catalog advertises the MCP surface (serves_mcp —

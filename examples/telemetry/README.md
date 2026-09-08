@@ -24,6 +24,7 @@ fleet in memory, so `python main.py` just works.
 | `NotFoundError` / `ValidationError` → HTTP 404/400 | [endpoints/get_device.py](endpoints/get_device.py) |
 | One ASGI app for REST **and** MCP via `asgi_app()` | [main.py](main.py) |
 | Bearer auth over REST + MCP (`AUTH_API_KEY`) | [main.py](main.py) |
+| Identidade da chave (`current_auth`) + `required_scope` — chega ao callback sync via REST **e** MCP | [endpoints/whoami.py](endpoints/whoami.py) |
 | Dependency-injection testing | [test_telemetry.py](test_telemetry.py) |
 
 ## Run it
@@ -69,6 +70,10 @@ curl -OJ "http://localhost:8000/api/export-readings?device_id=1"
 
 # Error on a raw endpoint still uses the standard error envelope (lock 3):
 curl "http://localhost:8000/api/export-readings?device_id=99"
+
+# Who am I? (run with AUTH_API_KEY="painel:sk_read:read,campo:sk_full:read+write")
+# The key's name/scopes reach the callback — same answer over MCP tools/call:
+curl http://localhost:8000/api/whoami -H 'Authorization: Bearer sk_read'
 ```
 
 Every enveloped response uses the framework shape (raw endpoints excepted —

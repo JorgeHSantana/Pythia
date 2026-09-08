@@ -124,3 +124,52 @@ def test_export_de_device_desconhecido_e_not_found():
     from restmcp.exceptions import NotFoundError
     with pytest.raises(NotFoundError):
         _service().export_csv(99)
+
+
+# ---- 0.5.0: identidade da chave (#15) através do salto de thread (#16) ------
+
+
+def test_identity_service_describes_injected_principal():
+    from services.identity import IdentityService
+
+    repo = ReadingRepository(data_source=FakeTelemetryDataSource())
+    svc = IdentityService(readings=repo,
+                          principal={"name": "painel", "scopes": frozenset({"read"})})
+    assert svc.describe_caller() == {"who": "painel", "scopes": ["read"]}
+    assert IdentityService(readings=repo).describe_caller() == {"who": None, "scopes": []}
+
+
+def test_whoami_identity_reaches_sync_callback_over_rest_and_mcp(monkeypatch):
+    """End-to-end: the key name set by the middleware is what the `def`
+    callback sees — over REST and over a real MCP tools/call."""
+    import json
+    import pytest
+    from starlette.testclient import TestClient
+    from restmcp import Server
+    pytest.importorskip("fastmcp")
+
+    monkeypatch.setenv("AUTH_API_KEY", "painel:sk_read:read,campo:sk_full:read+write")
+    import endpoints.whoami  # noqa: F401  (registers the endpoint)
+    app = Server.get_instance().asgi_app(mcp_path="/mcp-protocol")
+
+    H = {"Accept": "application/json, text/event-stream", "Authorization": "Bearer sk_read"}
+    with TestClient(app) as c:
+        assert c.get("/api/whoami", headers=H).json()["result"] == {
+            "who": "painel", "scopes": ["read"]}
+        assert c.get("/api/whoami").status_code == 401                # no key
+
+        r = c.post("/mcp-protocol/", headers=H, json={
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2025-06-18", "capabilities": {},
+                       "clientInfo": {"name": "t", "version": "1"}}})
+        sid = r.headers.get("mcp-session-id")
+        h = {**H, **({"mcp-session-id": sid} if sid else {})}
+        c.post("/mcp-protocol/", headers=h,
+               json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+        r = c.post("/mcp-protocol/", headers=h, json={
+            "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+            "params": {"name": "whoami", "arguments": {}}})
+        data = [l for l in r.text.splitlines() if l.startswith("data:")]
+        payload = json.loads(data[-1][len("data:"):]) if data else r.json()
+        assert payload["result"]["structuredContent"] == {
+            "who": "painel", "scopes": ["read"]}

@@ -11,6 +11,24 @@ this file move together — the publish workflow releases whatever version is in
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-08
+
+### Fixed
+- `/mcp/tools` returned **500** when any registered endpoint carried a
+  hand-written `mcp_definition` without a `parameters` key — a shape
+  `_validate_mcp_definition` accepts (the OpenAPI and MCP builders already
+  tolerated it). The catalog now publishes `{"properties": {}}` for it.
+
+### Added
+- Tests pin that the key identity (#15) reaches the callback over a real MCP
+  `tools/call` through `asgi_app()`, sync and async — the contextvar hop fix
+  (#16) was only covered on REST and in isolation; the MCP path depends on
+  FastMCP executing the tool inside the request task.
+- `examples/telemetry`: `whoami` endpoint + `IdentityService` reading
+  `restmcp.auth.current_auth` (with `required_scope = "read"`), README rows,
+  curl walkthrough, named-keys sample in `.env.example`, and an end-to-end
+  test over REST and MCP.
+
 ## [0.6.0] - 2026-08-13
 
 Issue #18, both halves — the status code stops being hardwired.
@@ -167,7 +185,8 @@ CLI (`restmcp new`), `Returns:` docstring requirement for inferred definitions,
 publish workflow (PyPI + GitHub Releases). See git history for the
 commit-level record.
 
-[Unreleased]: https://github.com/JorgeHSantana/restmcp/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/JorgeHSantana/restmcp/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/JorgeHSantana/restmcp/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/JorgeHSantana/restmcp/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/JorgeHSantana/restmcp/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/JorgeHSantana/restmcp/compare/v0.4.1...v0.5.0
